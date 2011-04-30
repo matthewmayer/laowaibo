@@ -1,0 +1,36 @@
+<head>
+<link type="text/css" rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+	<p>
+	<a href="./">Friends</a>
+	<a href="./?view=mine">Mine</a>
+	<a href="./?view=mentions">Mentions</a>
+	</p>
+<h2>{{username}}'s timeline</h2>
+<table>
+	
+{%for status in timeline %}
+	<tr>
+		<td class="textzh"><div class="triangle">{{status.text}}
+			{%if status.retweeted_status%}
+			<div class="retweet">{{status.retweeted_status.text}}</div>
+			{%endif%}
+			</div></td>
+		<td class="texten"><div class="triangle blue">{{status.text_en}}
+			{%if status.retweeted_status%}
+			<div class="retweet">{{status.retweeted_text_en}}</div>
+			{%endif%}
+			</div></td>
+		<td><time>{{status.created_at}}</time>
+			<br/>
+			<p>{%if status.user.following%}You are following {{status.user.screen_name}}{%else%}You are not following {{status.user.screen_name}}{%endif%}</p></td>
+	</tr>
+	<tr class="source">
+		<td><img src="{{status.user.profile_image_url}}"/></td>
+		<td><b>{{status.user.screen_name}}</b> </td>
+	</tr>
+	
+{%endfor%}
+</table>
+</body>
