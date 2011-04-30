@@ -1,0 +1,40 @@
+<head>
+<link type="text/css" rel="stylesheet" href="/static/style.css" />
+<script src="http://code.jquery.com/jquery-1.5.2.min.js" type="text/javascript"></script>
+<script src="/static/jquery-fieldselection.min.js" type="text/javascript"></script>
+<script src="/static/jquery.hotkeys.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+$(document).ready(function() { 
+	var prev;
+	setInterval(function(){
+		var orig = $('#tweetzh').val();
+		if (orig!=prev) {
+			prev = orig;
+			$('#tweeten').load("/translate",{text:prev,lang:'zh-Hans|en'});
+		}
+	},2000);
+	$('#tweetzh').bind('keydown', 'down', function() {
+		var range = $('#tweetzh').getSelection();
+		var t = $('#tweetzh').val();
+		$.post("/translate",{text:range.text,lang:'en|zh-Hans'},function(res) {
+			var newtxt = t.substr(0, range.start)+res+(t.substr(range.end, t.length));
+			$('#tweetzh').val(newtxt);
+		})
+		
+		return false;
+	});
+	
+});
+</script>
+</head>
+<body>
+<table>
+	<tr>
+		<td><p>Post a new update:</p><div class="triangle"><input type="text" id="tweetzh" value="你好" />
+			
+			
+			</div></td>
+		<td><p>Translation:</p><div class="triangle blue" id="tweeten"></div></td>
+		</tr>
+</table>

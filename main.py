@@ -24,12 +24,14 @@ import random
 import time
 from apiclient.discovery import build
 import os
+import hashlib
 
 from weibopy.api import API
 from weibopy.auth import OAuthHandler
 from google.appengine.ext import webapp
 from google.appengine.api import memcache
 from google.appengine.ext.webapp import util
+from google.appengine.api import memcache
 
 from abstract import BaseHandler
 
@@ -43,7 +45,7 @@ CONSUMER_SECRET = 'bb501362af3d370773d5dba442cf773e'
 PORT = 80
 REQUEST_TOKEN_URL = 'http://'+SERVER+'/oauth/request_token'
 RESOURCE_URL = os.environ['HTTP_HOST']
-
+PAGE_SIZE=10
 
 # Set cookie. Expiration is 2 days long.
 expires = datetime.datetime.now() + datetime.timedelta(days=2)
@@ -177,7 +179,7 @@ class SinaOauthPhaseTwo(webapp.RequestHandler):
                                              'sina_username=' + self.username + cookie)
             logging.info('Sina username: %s' % self.username)
         else:
-            logging.info('NO SINA USER %s' % self.username)
+            logging.info('NO SINA USER')
 
         
         self.redirect('/')
@@ -191,17 +193,33 @@ class LogoutHandler(webapp.RequestHandler):
                                          'sina_username=' + "" + cookie)
         self.redirect("/")
 
-class MainPage(BaseHandler):
-    def translate(self,texts):
-        service = build('translate', 'v2',
-                    developerKey='AIzaSyDBy_hjgHTqJhILOrlTfb_3rTYYgM6Pypc')
-        data = (service.translations().list(
-              source='zh',
-              target='en',
-              q=texts
-            ).execute())
-       
-        return [s['translatedText'] for s in data['translations']]
+class Translator(object):
+    @classmethod
+    def translate(clz,text,source='zh',target='en'):
+        ahash = hashlib.sha224(text.encode('utf-8')).hexdigest()
+        trans = memcache.get(ahash)
+        if trans is None:
+            logging.info('MISS %s',ahash)
+            service = build('translate', 'v2',
+                        developerKey='AIzaSyDBy_hjgHTqJhILOrlTfb_3rTYYgM6Pypc')
+            data = (service.translations().list(
+                  source=source,
+                  target=target,
+                  q=[text]
+                ).execute())
+            trans = data['translations'][0]['translatedText']
+            memcache.add(ahash,trans,60*60*24*7)
+        else:
+            logging.info('HIT %s',ahash)
+        return trans
+
+class TranslateHandler(BaseHandler):
+    def post(self):
+        text = self.request.get('text')
+        source,target = self.request.get('lang').split("|")
+        self.response.out.write(Translator.translate(text,source=source,target=target))
+
+class MainPage(BaseHandler): 
     def get(self):
         # Check Sina user logged in or not.
         sina_username =  self.request.cookies.get("sina_username")
@@ -214,30 +232,33 @@ class MainPage(BaseHandler):
             view = self.request.get('view')
             timeline = None
             if view=='mine':
-                timeline = api.user_timeline(count=5, page=1)
+                timeline = api.user_timeline(count=PAGE_SIZE, page=1)
             elif view=='mentions':
-                timeline = api.mentions(count=5, page=1)
+                timeline = api.mentions(count=PAGE_SIZE, page=1)
             else:
-                timeline = api.friends_timeline(count=5, page=1)
+                timeline = api.friends_timeline(count=PAGE_SIZE, page=1)
             for status in timeline:
+                status.text_en = Translator.translate(status.text)
+                status.created_at_iso = "%s+0800" % (str(status.created_at).replace(" ","T"))
                 if hasattr(status,'retweeted_status'):
-                    tw0,tw1 = self.translate([status.text,status.retweeted_status.text])
-                    status.text_en = tw0
-                    status.retweeted_text_en = tw1
-                else:
-                    tw0 = self.translate([status.text])[0]
-                    status.text_en = tw0
+                    status.retweeted_text_en = Translator.translate(status.retweeted_status.text)
             self.render_template("index.html",{"timeline":timeline,"username":sina_username})
         else:
             self.response.out.write("<a href='/oauth/sina_login'>Login with Sina</a>")
 
-
+class ComposeHandler(BaseHandler):
+    def get(self):
+        # Check Sina user logged in or not.
+        self.render_template("compose.html",{})
 def main():
     application = webapp.WSGIApplication(
                                          [('/', MainPage),
                                           ('/oauth/sina_login', SinaOauthPhaseOne),
                                           ('/oauth_authorized', SinaOauthPhaseTwo),
                                           ('/oauth/sina_logout', LogoutHandler),
+                                          ('/translate',TranslateHandler),
+                                          ('/compose',ComposeHandler)
+                                          
                                           ],
                                          debug=True)
     util.run_wsgi_app(application)
