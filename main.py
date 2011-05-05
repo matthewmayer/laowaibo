@@ -247,9 +247,23 @@ class MainPage(BaseHandler):
             self.response.out.write("<a href='/oauth/sina_login'>Login with Sina</a>")
 
 class ComposeHandler(BaseHandler):
+    def post(self):
+        tweet = self.request.get("text")
+        sina_username =  self.request.cookies.get("sina_username")
+        if sina_username:
+            oauth_key = self.request.cookies.get("oauth_key")
+            oauth_secret = self.request.cookies.get("oauth_secret")
+            auth = OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+            auth.setToken(oauth_key, oauth_secret)
+            api = API(auth)
+            api.update_status(tweet)
+        self.redirect("/sent")    
+        
+class SentHandler(BaseHandler):
     def get(self):
         # Check Sina user logged in or not.
-        self.render_template("compose.html",{})
+        self.render_template("sent.html",{})
+        
 def main():
     application = webapp.WSGIApplication(
                                          [('/', MainPage),
@@ -257,7 +271,8 @@ def main():
                                           ('/oauth_authorized', SinaOauthPhaseTwo),
                                           ('/oauth/sina_logout', LogoutHandler),
                                           ('/translate',TranslateHandler),
-                                          ('/compose',ComposeHandler)
+                                          ('/compose',ComposeHandler),
+                                          ('/sent',SentHandler),
                                           
                                           ],
                                          debug=True)

@@ -29,12 +29,15 @@ $(document).ready(function() {
 </script>
 </head>
 <body>
+	<form method="POST" action="/compose">
 <table>
 	<tr>
-		<td><p>Post a new update:</p><div class="triangle"><textarea rows="5" cols="40" id="tweetzh">你好</textarea>
+		<td><p>Post a new update:</p><div class="triangle"><textarea rows="5" cols="40" name="text" id="tweetzh">你好</textarea>
 			
 			
 			</div></td>
 		<td><p>Translation:</p><div class="triangle blue" id="tweeten"></div></td>
+		<td><input type="submit" value="Send" /></td>
 		</tr>
 </table>
+</form>
