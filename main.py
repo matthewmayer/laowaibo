@@ -28,6 +28,7 @@ import hashlib
 
 from weibopy.api import API
 from weibopy.auth import OAuthHandler
+from weibopy.error import WeibopError
 from google.appengine.ext import webapp
 from google.appengine.api import memcache
 from google.appengine.ext.webapp import util
@@ -265,10 +266,13 @@ class FollowHandler(SinaHandler):
     def get(self):
         id = int(self.request.get("id"))
         if self.auth():
-            self.api.follow(user_id=id)
-            self.redirect("/followed")    
+            try:
+                self.api.create_friendship(user_id=id)
+                self.response.out.write('{"status":"ok"}') 
+            except WeibopError:
+                self.response.out.write('{"status":"error", "message":"already following this user"}')
         else:
-            self.response.out.write("<a href='/oauth/sina_login'>Login with Sina</a>")
+            self.response.out.write('{"status":"error", "message":"not signed in"}')
         
         
 class ComposeHandler(SinaHandler):

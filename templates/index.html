@@ -8,32 +8,7 @@
 <script src="/static/jquery.currant.js" type="text/javascript"></script>
 <script src="/static/jquery-fieldselection.min.js" type="text/javascript"></script>
 <script src="/static/jquery.hotkeys.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-$(document).ready(function() { 
-	$("nav").currant();
-	$("abbr.timeago").timeago();
-	var prev;
-	setInterval(function(){
-		var orig = $('#tweetzh').val();
-		if (orig!=prev) {
-			prev = orig;
-			$('#tweeten').load("/translate",{text:prev,lang:'zh-Hans|en'});
-		}
-	},2000);
-	$('#tweetzh').bind('keydown', 'down', function() {
-		var range = $('#tweetzh').getSelection();
-		var t = $('#tweetzh').val();
-		$.post("/translate",{text:range.text,lang:'en|zh-Hans'},function(res) {
-			var newtxt = t.substr(0, range.start)+res+(t.substr(range.end, t.length));
-			$('#tweetzh').val(newtxt);
-		})
-		
-		return false;
-	});
-	
-});
-</script>
+<script src="/static/weibo.js" type="text/javascript"></script>
 </head>
 <header>
 	<h1>LaoWaiBo</h1>
@@ -80,7 +55,20 @@ $(document).ready(function() {
 	</tr>
 	<tr class="source">
 		<td><img src="{{status.user.profile_image_url}}"/> <abbr class="timeago" title="{{status.created_at_iso}}">{{status.created_at}}</abbr></td>
-		<td><b>{{status.user.screen_name}} ({{status.user.domain}}) <br/>{{status.user.followers_count}} followers - {%if status.me%}That's you{%else %}{%if status.following_author%}Following{%else%}<a href="/follow/{{status.user.id}}">Follow</a>{%endif%}{%endif%}</td>
+		<td><b>{{status.user.screen_name}} ({{status.user.domain}}) <br/>{{status.user.followers_count}} followers - 
+			
+			<span class="follow_status">
+				{%if status.me%}
+					That's you
+				{%else %}
+				{%if status.following_author%}
+					Following
+				{%else%}
+					<a class="follow" href="/follow?id={{status.user.id}}">Follow</a>
+				{%endif%}{%endif%}
+			</span>
+			
+			</td>
 	</tr>
 	
 {%endfor%}
