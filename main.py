@@ -219,16 +219,25 @@ class TranslateHandler(BaseHandler):
         source,target = self.request.get('lang').split("|")
         self.response.out.write(Translator.translate(text,source=source,target=target))
 
-class MainPage(BaseHandler): 
-    def get(self):
+class SinaHandler(BaseHandler):
+    api = None
+    sina_username = None
+    def auth(self):
         # Check Sina user logged in or not.
-        sina_username =  self.request.cookies.get("sina_username")
-        if sina_username:
+        self.sina_username =  self.request.cookies.get("sina_username")
+        if self.sina_username:
             oauth_key = self.request.cookies.get("oauth_key")
             oauth_secret = self.request.cookies.get("oauth_secret")
             auth = OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
             auth.setToken(oauth_key, oauth_secret)
-            api = API(auth)
+            self.api = API(auth)
+            return True
+        return False
+        
+class MainPage(SinaHandler): 
+    def get(self):
+        if self.auth():
+            api = self.api
             view = self.request.get('view')
             timeline = None
             if view=='mine':
@@ -241,37 +250,45 @@ class MainPage(BaseHandler):
                 timeline = api.friends_timeline(count=PAGE_SIZE, page=1)
             friendids = api.friends_ids().ids
             for status in timeline:
-                status.me = status.user.screen_name==sina_username
+                status.me = status.user.screen_name==self.sina_username
                 status.text_en = Translator.translate(status.text)
                 status.following_author = status.user.id in friendids
                 status.created_at_iso = "%s+0800" % (str(status.created_at).replace(" ","T"))
                 if hasattr(status,'retweeted_status'):
                     status.retweeted_text_en = Translator.translate(status.retweeted_status.text)
-            self.render_template("index.html",{"timeline":timeline,"username":sina_username})
+            self.render_template("index.html",{"timeline":timeline,"username":self.sina_username})
         else:
             self.response.out.write("<a href='/oauth/sina_login'>Login with Sina</a>")
 
-class ComposeHandler(BaseHandler):
+
+class FollowHandler(SinaHandler):
+    def get(self):
+        id = int(self.request.get("id"))
+        if self.auth():
+            self.api.follow(user_id=id)
+            self.redirect("/followed")    
+        else:
+            self.response.out.write("<a href='/oauth/sina_login'>Login with Sina</a>")
+        
+        
+class ComposeHandler(SinaHandler):
     def post(self):
         tweet = self.request.get("text")
         sina_username =  self.request.cookies.get("sina_username")
-        if sina_username:
-            oauth_key = self.request.cookies.get("oauth_key")
-            oauth_secret = self.request.cookies.get("oauth_secret")
-            auth = OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
-            auth.setToken(oauth_key, oauth_secret)
-            api = API(auth)
-            api.update_status(tweet)
-        self.redirect("/sent")    
+        if self.auth():
+            self.api.update_status(tweet)
+            self.redirect("/sent")    
+        else:
+            self.response.out.write("<a href='/oauth/sina_login'>Login with Sina</a>")
         
 class SentHandler(BaseHandler):
     def get(self):
-        # Check Sina user logged in or not.
         self.render_template("sent.html",{})
         
 def main():
     application = webapp.WSGIApplication(
                                          [('/', MainPage),
+                                          ('/follow',FollowHandler),
                                           ('/oauth/sina_login', SinaOauthPhaseOne),
                                           ('/oauth_authorized', SinaOauthPhaseTwo),
                                           ('/oauth/sina_logout', LogoutHandler),
