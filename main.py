@@ -235,10 +235,15 @@ class MainPage(BaseHandler):
                 timeline = api.user_timeline(count=PAGE_SIZE, page=1)
             elif view=='mentions':
                 timeline = api.mentions(count=PAGE_SIZE, page=1)
+            elif view=='comments':
+                timeline = api.comments_timeline(count=PAGE_SIZE, page=1)
             else:
                 timeline = api.friends_timeline(count=PAGE_SIZE, page=1)
+            friendids = api.friends_ids().ids
             for status in timeline:
+                status.me = status.user.screen_name==sina_username
                 status.text_en = Translator.translate(status.text)
+                status.following_author = status.user.id in friendids
                 status.created_at_iso = "%s+0800" % (str(status.created_at).replace(" ","T"))
                 if hasattr(status,'retweeted_status'):
                     status.retweeted_text_en = Translator.translate(status.retweeted_status.text)

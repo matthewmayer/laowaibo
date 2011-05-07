@@ -1,4 +1,4 @@
-
+h1 {font-variant: small-caps; font-weight:normal; font-family:Georgia; letter-spacing:5px;}
 
 /* ============================================================================================================================
 == BUBBLE WITH AN ISOCELES TRIANGLE
@@ -54,3 +54,4 @@
 td {width:450px;}
 .source td {padding-left:40px; padding-bottom:30px;}
 .retweet {border:1px white dashed; padding:5px; background-color:rgba(255,255,255,0.5); margin:5px;}
+input[type=submit] {width:200px; height:50px; font-size:medium;}
